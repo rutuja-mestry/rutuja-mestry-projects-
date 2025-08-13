@@ -1,0 +1,157 @@
+import java.sql.*;
+import java.util.*;
+
+class Book {
+    int id;
+    String title;
+    String author;
+    double price;
+
+    public Book(int id, String title, String author, double price) {
+        this.id = id;
+        this.title = title;
+        this.author = author;
+        this.price = price;
+    }
+}
+
+public class BookManagementSystem {
+    private static final String URL = "jdbc:mysql://localhost:3306/bookdb";
+    private static final String USER = "root";  // change to your MySQL username
+    private static final String PASSWORD = "";   // change to your MySQL password
+
+    public static void main(String[] args) {
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD)) {
+            Scanner sc = new Scanner(System.in);
+            while (true) {
+                System.out.println("\n--- Book Management System ---");
+                System.out.println("1. Add Book");
+                System.out.println("2. View All Books");
+                System.out.println("3. Search Book");
+                System.out.println("4. Update Book");
+                System.out.println("5. Delete Book");
+                System.out.println("6. Exit");
+                System.out.print("Enter choice: ");
+                int choice = sc.nextInt();
+
+                switch (choice) {
+                    case 1 -> addBook(conn, sc);
+                    case 2 -> viewBooks(conn);
+                    case 3 -> searchBook(conn, sc);
+                    case 4 -> updateBook(conn, sc);
+                    case 5 -> deleteBook(conn, sc);
+                    case 6 -> {
+                        System.out.println("Exiting...");
+                        return;
+                    }
+                    default -> System.out.println("Invalid choice!");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void addBook(Connection conn, Scanner sc) throws SQLException {
+        System.out.print("Enter Title: ");
+        sc.nextLine();
+        String title = sc.nextLine();
+        System.out.print("Enter Author: ");
+        String author = sc.nextLine();
+        System.out.print("Enter Price: ");
+        double price = sc.nextDouble();
+
+        String sql = "INSERT INTO books (title, author, price) VALUES (?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, title);
+            stmt.setString(2, author);
+            stmt.setDouble(3, price);
+            stmt.executeUpdate();
+            System.out.println("Book added successfully!");
+        }
+    }
+
+    private static void viewBooks(Connection conn) throws SQLException {
+        String sql = "SELECT * FROM books";
+        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
+            System.out.printf("%-5s %-20s %-20s %-10s%n", "ID", "Title", "Author", "Price");
+            while (rs.next()) {
+                System.out.printf("%-5d %-20s %-20s %-10.2f%n",
+                        rs.getInt("id"), rs.getString("title"), rs.getString("author"), rs.getDouble("price"));
+            }
+        }
+    }
+
+    private static void searchBook(Connection conn, Scanner sc) throws SQLException {
+        System.out.print("Enter book title or ID: ");
+        sc.nextLine();
+        String input = sc.nextLine();
+
+        String sql;
+        PreparedStatement stmt;
+        if (input.matches("\\d+")) { // Search by ID
+            sql = "SELECT * FROM books WHERE id = ?";
+            stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, Integer.parseInt(input));
+        } else { // Search by title
+            sql = "SELECT * FROM books WHERE title LIKE ?";
+            stmt = conn.prepareStatement(sql);
+            stmt.setString(1, "%" + input + "%");
+        }
+
+        try (ResultSet rs = stmt.executeQuery()) {
+            if (!rs.isBeforeFirst()) {
+                System.out.println("No book found!");
+            } else {
+                while (rs.next()) {
+                    System.out.printf("%d - %s by %s, Price: %.2f%n",
+                            rs.getInt("id"), rs.getString("title"),
+                            rs.getString("author"), rs.getDouble("price"));
+                }
+            }
+        }
+    }
+
+    private static void updateBook(Connection conn, Scanner sc) throws SQLException {
+        System.out.print("Enter Book ID to update: ");
+        int id = sc.nextInt();
+        sc.nextLine();
+
+        System.out.print("Enter new Title: ");
+        String title = sc.nextLine();
+        System.out.print("Enter new Author: ");
+        String author = sc.nextLine();
+        System.out.print("Enter new Price: ");
+        double price = sc.nextDouble();
+
+        String sql = "UPDATE books SET title = ?, author = ?, price = ? WHERE id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, title);
+            stmt.setString(2, author);
+            stmt.setDouble(3, price);
+            stmt.setInt(4, id);
+            int rows = stmt.executeUpdate();
+            if (rows > 0) {
+                System.out.println("Book updated successfully!");
+            } else {
+                System.out.println("Book not found!");
+            }
+        }
+    }
+
+    private static void deleteBook(Connection conn, Scanner sc) throws SQLException {
+        System.out.print("Enter Book ID to delete: ");
+        int id = sc.nextInt();
+
+        String sql = "DELETE FROM books WHERE id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            int rows = stmt.executeUpdate();
+            if (rows > 0) {
+                System.out.println("Book deleted successfully!");
+            } else {
+                System.out.println("Book not found!");
+            }
+        }
+    }
+}
