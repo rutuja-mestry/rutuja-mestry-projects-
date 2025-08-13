@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mobile Image Editor</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: sans-serif;
+      padding: 10px;
+    }
+
+    #imagePreview {
+      max-width: 90%;
+      height: auto;
+      margin: 10px;
+      transform-origin: center;
+    }
+
+    .controls {
+      margin-top: 10px;
+    }
+
+    input[type="range"] {
+      width: 80%;
+    }
+
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #40cbff; /* Sky blue */
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #1baeff; /* Hover effect */
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Mobile Image Editor</h2>
+
+  <input type="file" id="upload" accept="image/*"><br>
+  <img id="imagePreview" src="" alt="Image Preview"><br>
+
+  <div class="controls">
+    <label>Brightness</label><br>
+    <input type="range" id="brightness" min="0" max="200" value="100"><br>
+
+    <label>Grayscale</label><br>
+    <input type="range" id="grayscale" min="0" max="100" value="0"><br>
+
+    <label>Contrast</label><br>
+    <input type="range" id="contrast" min="50" max="200" value="100"><br>
+
+    <label>Blur</label><br>
+    <input type="range" id="blur" min="0" max="10" value="0"><br>
+
+    <button onclick="rotate()">Rotate</button>
+    <button onclick="flip()">Flip</button>
+    <button onclick="download()">Download</button>
+  </div>
+
+  <canvas id="canvas" style="display:none;"></canvas>
+
+  <script>
+    const upload = document.getElementById("upload");
+    const image = document.getElementById("imagePreview");
+    const brightness = document.getElementById("brightness");
+    const grayscale = document.getElementById("grayscale");
+    const contrast = document.getElementById("contrast");
+    const blur = document.getElementById("blur");
+    const canvas = document.getElementById("canvas");
+
+    let rotateDeg = 0;
+    let flipped = false;
+    let currentImage = null;
+
+    upload.onchange = () => {
+      const file = upload.files[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        image.src = reader.result;
+        currentImage = new Image();
+        currentImage.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    };
+
+    function updateFilter() {
+      image.style.filter = `
+        brightness(${brightness.value}%)
+        grayscale(${grayscale.value}%)
+        contrast(${contrast.value}%)
+        blur(${blur.value}px)
+      `;
+    }
+
+    brightness.oninput = updateFilter;
+    grayscale.oninput = updateFilter;
+    contrast.oninput = updateFilter;
+    blur.oninput = updateFilter;
+
+    function rotate() {
+      rotateDeg = (rotateDeg + 90) % 360;
+      image.style.transform = `rotate(${rotateDeg}deg) scaleX(${flipped ? -1 : 1})`;
+    }
+
+    function flip() {
+      flipped = !flipped;
+      image.style.transform = `rotate(${rotateDeg}deg) scaleX(${flipped ? -1 : 1})`;
+    }
+
+    function download() {
+      if (!currentImage) return alert("Please upload an image first.");
+
+      const tempCanvas = document.createElement('canvas');
+      const ctx = tempCanvas.getContext("2d");
+
+      const radians = rotateDeg * Math.PI / 180;
+
+      let width = currentImage.width;
+      let height = currentImage.height;
+
+      if (rotateDeg % 180 !== 0) {
+        tempCanvas.width = height;
+        tempCanvas.height = width;
+      } else {
+        tempCanvas.width = width;
+        tempCanvas.height = height;
+      }
+
+      ctx.save();
+      ctx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
+      ctx.rotate(radians);
+      ctx.scale(flipped ? -1 : 1, 1);
+
+      ctx.filter = `
+        brightness(${brightness.value}%)
+        grayscale(${grayscale.value}%)
+        contrast(${contrast.value}%)
+        blur(${blur.value}px)
+      `;
+
+      ctx.drawImage(currentImage, -width / 2, -height / 2);
+      ctx.restore();
+
+      const link = document.createElement("a");
+      link.download = "edited-image.png";
+      link.href = tempCanvas.toDataURL("image/png");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+
+</body>
+</html>
