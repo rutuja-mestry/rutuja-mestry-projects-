@@ -1,0 +1,25 @@
+from flask import Flask, render_template, request, jsonify
+
+app = Flask(__name__)
+
+attendance_data = []  # No database — just a list in memory
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/mark_attendance', methods=['POST'])
+def mark_attendance():
+    name = request.form.get('name')
+    if name and name not in attendance_data:
+        attendance_data.append(name)
+        return jsonify({"status": "success", "message": f"{name} marked present"})
+    else:
+        return jsonify({"status": "error", "message": "Invalid or duplicate name"})
+
+@app.route('/get_attendance')
+def get_attendance():
+    return jsonify(attendance_data)
+
+if __name__ == '__main__':
+    app.run(debug=True)
